@@ -222,6 +222,33 @@ const baseConfigs: { [network: number]: BaseConfig } = {
     rpcPollingMaxAllowedStateDelayInBlocks: 2,
     rpcPollingBlocksBackToTriggerUpdate: 1,
   },
+  [Network.FUJI]: {
+    network: Network.FUJI,
+    networkName: 'Avalanche Fuji Testnet',
+    isTestnet: true,
+    mainnetNetwork: Network.AVALANCHE,
+    nativeTokenName: 'AVAX',
+    nativeTokenSymbol: 'AVAX',
+    wrappedNativeTokenAddress: '0x1D308089a2D1Ced3f1Ce36B1FcaF815b07217be3',
+    hasEIP1559: true,
+    augustusAddress: '0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57',
+    augustusRFQAddress: '0x34268C38fcbC798814b058656bC0156C7511c0E4',
+    tokenTransferProxyAddress: '0x216b4b4ba9f3e719726886d34a177484278bfcae',
+    multicallV2Address: '0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696',
+    privateHttpProvider: 'https://api.avax-test.network/ext/bc/C/rpc',
+    hashFlowDisabledMMs:
+      process.env[`HASHFLOW_DISABLED_MMS_3`]?.split(',') || [],
+
+    adapterAddresses: {
+      RopstenAdapter01: '0x59b7F6258e78C3E5234bb651656EDd0e08868cd5',
+      RopstenBuyAdapter: '0x63e908A4C793a33e40254362ED1A5997a234D85C',
+    },
+    uniswapV2ExchangeRouterAddress:
+      '0x53e693c6C7FFC4446c53B205Cf513105Bf140D7b',
+    rfqConfigs: {},
+    rpcPollingMaxAllowedStateDelayInBlocks: 5,
+    rpcPollingBlocksBackToTriggerUpdate: 3,
+  },
   [Network.FANTOM]: {
     network: Network.FANTOM,
     networkName: 'Fantom Opera Mainnet',

@@ -417,6 +417,7 @@ export class RateFetcher {
         firmRateResponseValidator,
       );
 
+      // this.dexHelper.config.data.augustusRFQAddress = "0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57";
       await checkOrder(
         this.dexHelper.config.data.network,
         this.dexHelper.config.data.augustusRFQAddress,

@@ -75,17 +75,17 @@ export class TenderlySimulation {
           },
         );
 
-        _params.state_objects = Object.keys(result.data.stateOverrides).reduce(
-          (acc, contract) => {
-            const _storage = result.data.stateOverrides[contract].value;
+        // _params.state_objects = Object.keys(result.data.stateOverrides).reduce(
+        //   (acc, contract) => {
+        //     const _storage = result.data.stateOverrides[contract].value;
 
-            acc[contract] = {
-              storage: _storage,
-            };
-            return acc;
-          },
-          {} as Record<Address, StateSimulateApiOverride>,
-        );
+        //     acc[contract] = {
+        //       storage: _storage,
+        //     };
+        //     return acc;
+        //   },
+        //   {} as Record<Address, StateSimulateApiOverride>,
+        // );
       }
 
       const { data } = await axios.post(

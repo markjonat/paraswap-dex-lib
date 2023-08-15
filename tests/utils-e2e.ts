@@ -232,6 +232,11 @@ export async function testE2E(
 
   if (paraswap.initializePricing) await paraswap.initializePricing();
 
+  const sleepMS = 5000;
+  if (sleepMS) {
+    await sleep(sleepMS);
+  }
+
   if (paraswap.dexHelper?.replaceProviderWithRPC) {
     paraswap.dexHelper?.replaceProviderWithRPC(
       `https://rpc.tenderly.co/fork/${ts.forkId}`,
