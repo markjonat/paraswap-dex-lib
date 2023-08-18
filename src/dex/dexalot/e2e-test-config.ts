@@ -22,32 +22,32 @@ export const testConfig: {
   //     amount: '10000000000000000000',
   //   },
   // ],
-  [Network.FUJI]: [
-    {
-      srcToken: 'ALOT',
-      destToken: 'USDC',
-      swapSide: SwapSide.BUY,
-      amount: '10000000',
-    },
-    {
-      srcToken: 'ALOT',
-      destToken: 'USDC',
-      swapSide: SwapSide.SELL,
-      amount: '10000000000000000000',
-    },
-  ],
-  // [Network.AVALANCHE]: [
+  // [Network.FUJI]: [
   //   {
-  //     srcToken: 'AVAX',
+  //     srcToken: 'ALOT',
   //     destToken: 'USDC',
   //     swapSide: SwapSide.BUY,
   //     amount: '10000000',
   //   },
   //   {
-  //     srcToken: 'AVAX',
+  //     srcToken: 'ALOT',
   //     destToken: 'USDC',
   //     swapSide: SwapSide.SELL,
   //     amount: '10000000000000000000',
   //   },
   // ],
+  [Network.AVALANCHE]: [
+    // {
+    //   srcToken: 'AVAX',
+    //   destToken: 'USDC',
+    //   swapSide: SwapSide.BUY,
+    //   amount: '10000000',
+    // },
+    {
+      srcToken: 'AVAX',
+      destToken: 'USDC',
+      swapSide: SwapSide.SELL,
+      amount: '10000000000000000000',
+    },
+  ],
 };

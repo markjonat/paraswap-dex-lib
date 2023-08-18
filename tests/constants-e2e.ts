@@ -560,10 +560,10 @@ export const Tokens: {
   },
   [Network.AVALANCHE]: {
     USDC: {
-      address: '0x204eEf60d7158653013158Bc1283860124249805', //'0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
+      address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
       decimals: 6,
-      // addBalance: balanceOfFn,
-      // addAllowance: allowanceFn,
+      addBalance: balanceOfFn,
+      addAllowance: allowanceFn,
     },
     USDTe: {
       address: '0xc7198437980c041c805A1EDcbA50c1Ce5db95118',
@@ -985,7 +985,7 @@ export const Holders: {
     nETH: '0xcf2ef00e75558512ae735679ea5df62ad2056786',
     avWETH: '0x92d78e32b990d10aeca0875dc5585f1a6f958179',
     YUSD: '0x6c1a5ef2acde1fd2fc68def440d2c1eb35bae24a',
-    ALOT: '0x448C73c962489f4871C7E89070d3481A99E74E0E',
+    ALOT: '0x093783055f9047c2bff99c4e414501f8a147bc69',
   },
   [Network.FUJI]: {
     ALOT: '0x9983F755Bbd60d1886CbfE103c98C272AA0F03d6',

@@ -24,10 +24,14 @@ import { SimpleExchange } from '../simple-exchange';
 import { DexalotConfig, Adapters } from './config';
 import { RateFetcher } from './rate-fetcher';
 import { DEXALOT_API_URL } from './constants';
+import { assert } from 'ts-essentials';
 import { PairTypes } from '../balancer-v2/LinearPool';
 import { TokenData } from './types';
 import { ethers } from 'ethers';
-import { FirmReturnObject } from './types';
+import { FirmReturnObject, RFQOrder } from './types';
+import { _TypedDataEncoder } from 'ethers/lib/utils';
+import { Interface, JsonFragment } from '@ethersproject/abi';
+import MainnetRFQABI from '../../abi/dexalot/mainnetRFQ.json';
 
 export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
   readonly hasConstantPriceLargeAmounts = false;
@@ -40,6 +44,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     getDexKeysWithNetwork(DexalotConfig);
 
   logger: Logger;
+  private rfqInterface: Interface;
   private rateFetcher: RateFetcher;
 
   constructor(
@@ -50,6 +55,8 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
   ) {
     super(dexHelper, dexKey);
     this.logger = dexHelper.getLogger(dexKey);
+
+    this.rfqInterface = new Interface(MainnetRFQABI as JsonFragment[]);
 
     this.rateFetcher = new RateFetcher(
       this.dexHelper,
@@ -122,7 +129,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
           intervalMs: 10000,
           dataTTLS: 10000,
         },
-        maker: '0xe84D0CfE6ca3281822050AaCa31578e5205204Dd',
+        maker: '0xd62f9E53Be8884C21f5aa523B3c7D6F9a0050af5',
       },
       this.dexKey,
       this.logger,
@@ -141,6 +148,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     if (!this.dexHelper.config.isSlave) {
       await this.rateFetcher.start();
     }
+
     return;
   }
 
@@ -180,8 +188,6 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
   private calcOutputs(
     orderBook: string[][],
     amounts: number[],
-    quoteDecimals: number,
-    baseDecimals: number,
     outDecimals: number,
     isBidBook: boolean,
   ) {
@@ -307,43 +313,32 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     const outDecimals =
       side === SwapSide.SELL ? destToken.decimals : srcToken.decimals;
 
-    // let quoteDecimals =
-    //   isSrcBase == true ?  destToken.decimals : srcToken.decimals;
-
-    // const outDecimals = destToken.decimals;
-    //quoteDecimals == destToken.decimals ? 0 : quoteDecimals - destToken.decimals;
-
     const _amountsInFormatted = amounts.map(a =>
       Number(ethers.utils.formatUnits(a, inDecimals)),
     );
-
-    // turn amounts out in function
-    // amounts => bignumber
-    // format deciamls
 
     const isBidBook = book == 'bids' ? true : false;
 
     const outputs = this.calcOutputs(
       orderBook,
       _amountsInFormatted,
-      quoteDecimals,
-      baseDecimals,
       outDecimals,
       isBidBook,
     );
 
     this.logger.info(outputs);
 
-    const dexalotData: DexalotData = {
-      makerAddress: destToken.address,
-      takerAddress: srcToken.address,
-    };
+    // TODO: call ratefetcher firm
+    // Migh make sense to do this in different function so not in integration test?
+
     // TODO: input correct values
     return [
       {
         prices: outputs,
         unit: BigInt(outDecimals),
-        data: dexalotData,
+        data: {
+          maker: DexalotConfig.Dexalot[Network.AVALANCHE].maker,
+        },
         poolIdentifier: pair,
         exchange: this.dexKey,
         gasCost: 100000,
@@ -373,13 +368,13 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
   ): AdapterExchangeParam {
     // TODO: complete me!
     // not used
-    const { makerAddress } = data;
+    const { maker } = data;
 
     // Encode here the payload for adapter
     const payload = '';
 
     return {
-      targetExchange: makerAddress,
+      targetExchange: maker,
       payload,
       networkFee: '0',
     };
@@ -399,18 +394,42 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
   ): Promise<SimpleExchangeParam> {
     // TODO: complete me!
     // format params for swap
-    const { makerAddress } = data;
+    // const { makerAddress } = data;
+
+    assert(
+      data.quote !== undefined,
+      `${this.dexKey}-${this.network}: quoteData undefined`,
+    );
 
     // Encode here the transaction arguments
-    const swapData = '';
+    const swapFunction = 'simpleSwap';
+    const swapFunctionParams = [
+      {
+        nonceAndMeta: data.quote.nonceAndMeta,
+        expiry: data.quote.expiry,
+        makerAsset: data.quote.makerAsset,
+        takerAsset: data.quote.takerAsset,
+        maker: data.quote.maker,
+        taker: data.quote.taker,
+        makerAmount: data.quote.makerAmount,
+        takerAmount: data.quote.takerAmount,
+      },
+      data.quote.signature,
+    ];
 
+    const swapData = this.rfqInterface.encodeFunctionData(
+      swapFunction,
+      swapFunctionParams,
+    );
+
+    // TODO: look into implementing
     return this.buildSimpleParamWithoutWETHConversion(
       srcToken,
       srcAmount,
       destToken,
       destAmount,
       swapData,
-      makerAddress,
+      data.maker,
     );
   }
 
@@ -467,6 +486,11 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     return pairsByLiquidity.slice(0, limit);
   }
 
+  getTokenFromAddress(address: string): Token {
+    const tokens = this.rateFetcher.addressToTokenMap;
+    return tokens[address.toLowerCase()] as Token;
+  }
+
   async getFirmRate(
     _srcToken: Token,
     _destToken: Token,
@@ -483,6 +507,101 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     );
   }
 
+  // buildOrderData(
+  //   chainId: Network,
+  //   params: RFQOrder,
+  //   contractAddress: string,
+  // ) {
+  //   const domain = {
+  //     name: "Dexalot",
+  //     version: "1",
+  //     chainId: chainId,
+  //     verifyingContract: contractAddress,
+  //   };
+
+  //   const types = {
+  //     Quote: [
+  //       { name: "nonceAndMeta", type: "uint256", },
+  //       { name: "expiry", type: "uint128", },
+  //       { name: "makerAsset", type: "address", },
+  //       { name: "takerAsset", type: "address", },
+  //       { name: "maker", type: "address", },
+  //       { name: "taker", type: "address", },
+  //       { name: "makerAmount", type: "uint256", },
+  //       { name: "takerAmount", type: "uint256", },
+  //     ],
+  //   };
+
+  //   return { domain, types };
+  // }
+
+  // calculateOrderHash(
+  //   chainId: Network,
+  //   params: RFQOrder,
+  //   contractAddress: string,
+  // ) {
+  //   const { domain, types } = this.buildOrderData(
+  //     chainId,
+  //     params,
+  //     contractAddress,
+  //   );
+  //   return _TypedDataEncoder.hash(domain, types, params);
+  // }
+
+  calculateHash(chainId: Network, params: RFQOrder, verifierContract: string) {
+    const structType =
+      '0x95afddf5e4bb9f692716b7fdff640e6b8a0d2869597405c6e9d35857ed19a150';
+    const encoder = new ethers.utils.AbiCoder();
+    const hashedStruct = ethers.utils.keccak256(
+      encoder.encode(
+        [
+          'bytes32',
+          'uint256',
+          'uint128',
+          'address',
+          'address',
+          'address',
+          'address',
+          'uint256',
+          'uint256',
+        ],
+        [
+          structType,
+          params.nonceAndMeta,
+          params.expiry,
+          params.makerAsset,
+          params.takerAsset,
+          params.maker,
+          params.taker,
+          params.makerAmount,
+          params.takerAmount,
+        ],
+      ),
+    );
+
+    const typeHash =
+      '0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f';
+    const nameHash =
+      '0xd2ef1b0ffc50b2e9cd67fedd1f364a1cc9de9821aa5f08b3504728919074b0d7';
+    const versionHash =
+      '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
+    const domainSeperator = ethers.utils.keccak256(
+      encoder.encode(
+        ['bytes32', 'bytes32', 'bytes32', 'uint', 'address'],
+        [typeHash, nameHash, versionHash, chainId, verifierContract],
+      ),
+    );
+
+    const hash = ethers.utils.keccak256(
+      ethers.utils.solidityPack(
+        ['string', 'bytes32', 'bytes32'],
+        ['\x19\x01', domainSeperator, hashedStruct],
+      ),
+    );
+
+    return hash;
+  }
+
   async preProcessTransaction(
     optimalSwapExchange: OptimalSwapExchange<DexalotData>,
     srcToken: Token,
@@ -490,172 +609,142 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     side: SwapSide,
     options: PreprocessTransactionOptions,
   ): Promise<[OptimalSwapExchange<DexalotData>, ExchangeTxInfo]> {
-    // if (await this.isBlacklisted(options.txOrigin)) {
-    //   this.logger.warn(
-    //     `${this.dexKey}-${this.network}: blacklisted TX Origin address '${options.txOrigin}' trying to build a transaction. Bailing...`,
-    //   );
-    //   throw new Error(
-    //     `${this.dexKey}-${
-    //       this.network
-    //     }: user=${options.txOrigin.toLowerCase()} is blacklisted`,
-    //   );
-    // }
-    // const mm = optimalSwapExchange.data?.mm;
-    // assert(
-    //   mm !== undefined,
-    //   `${this.dexKey}-${this.network}: MM was not provided in data`,
-    // );
-    // const chainId = this.network as ChainId;
+    const blacklistedString: string =
+      (await this.dexHelper.cache.get(
+        this.dexKey,
+        this.dexHelper.config.data.network,
+        this.rateFetcher.blackListCacheKey,
+      )) || '[]';
+    const blacklist: string[] = JSON.parse(blacklistedString);
 
-    // const normalizedSrcToken = this.normalizeToken(srcToken);
-    // const normalizedDestToken = this.normalizeToken(destToken);
-
-    // let rfq: RfqResponse;
-    // try {
-    //   rfq = await this.api.requestQuote({
-    //     chainId,
-    //     baseToken: normalizedSrcToken.address,
-    //     quoteToken: normalizedDestToken.address,
-    //     ...(side === SwapSide.SELL
-    //       ? {
-    //           baseTokenAmount: optimalSwapExchange.srcAmount,
-    //         }
-    //       : { quoteTokenAmount: optimalSwapExchange.destAmount }),
-    //     wallet: this.augustusAddress.toLowerCase(),
-    //     effectiveTrader: options.txOrigin.toLowerCase(),
-    //     marketMakers: [mm],
-    //   });
-
-    //   if (rfq.status !== 'success') {
-    //     const message = `${this.dexKey}-${
-    //       this.network
-    //     }: Failed to fetch RFQ for ${this.getPairName(
-    //       normalizedSrcToken.address,
-    //       normalizedDestToken.address,
-    //     )}: ${JSON.stringify(rfq)}`;
-    //     this.logger.warn(message);
-    //     throw new RfqError(message);
-    //   } else if (!rfq.quoteData) {
-    //     const message = `${this.dexKey}-${
-    //       this.network
-    //     }: Failed to fetch RFQ for ${this.getPairName(
-    //       normalizedSrcToken.address,
-    //       normalizedDestToken.address,
-    //     )}. Missing quote data`;
-    //     this.logger.warn(message);
-    //     throw new RfqError(message);
-    //   } else if (!rfq.signature) {
-    //     const message = `${this.dexKey}-${
-    //       this.network
-    //     }: Failed to fetch RFQ for ${this.getPairName(
-    //       normalizedSrcToken.address,
-    //       normalizedDestToken.address,
-    //     )}. Missing signature`;
-    //     this.logger.warn(message);
-    //     throw new RfqError(message);
-    //   } else if (!rfq.gasEstimate) {
-    //     const message = `${this.dexKey}-${
-    //       this.network
-    //     }: Failed to fetch RFQ for ${this.getPairName(
-    //       normalizedSrcToken.address,
-    //       normalizedDestToken.address,
-    //     )}. No gas estimate.`;
-    //     this.logger.warn(message);
-    //     throw new RfqError(message);
-    //   } else if (rfq.quoteData.rfqType !== RFQType.RFQT) {
-    //     const message = `${this.dexKey}-${
-    //       this.network
-    //     }: Failed to fetch RFQ for ${this.getPairName(
-    //       normalizedSrcToken.address,
-    //       normalizedDestToken.address,
-    //     )}. Invalid RFQ type.`;
-    //     this.logger.warn(message);
-    //     throw new RfqError(message);
-    //   }
-
-    //   assert(
-    //     rfq.quoteData.baseToken === normalizedSrcToken.address,
-    //     `QuoteData baseToken=${rfq.quoteData.baseToken} is different from srcToken=${normalizedSrcToken.address}`,
-    //   );
-    //   assert(
-    //     rfq.quoteData.quoteToken === normalizedDestToken.address,
-    //     `QuoteData baseToken=${rfq.quoteData.quoteToken} is different from srcToken=${normalizedDestToken.address}`,
-    //   );
-
-    //   const expiryAsBigInt = BigInt(rfq.quoteData.quoteExpiry);
-    //   const minDeadline = expiryAsBigInt > 0 ? expiryAsBigInt : BI_MAX_UINT256;
-
-    //   const baseTokenAmount = BigInt(rfq.quoteData.baseTokenAmount);
-    //   const quoteTokenAmount = BigInt(rfq.quoteData.quoteTokenAmount);
-
-    //   const srcAmount = BigInt(optimalSwapExchange.srcAmount);
-    //   const destAmount = BigInt(optimalSwapExchange.destAmount);
-
-    //   const slippageFactor = options.slippageFactor;
-
-    //   if (side === SwapSide.SELL) {
-    //     if (
-    //       quoteTokenAmount <
-    //       BigInt(
-    //         new BigNumber(destAmount.toString())
-    //           .times(slippageFactor)
-    //           .toFixed(0),
-    //       )
-    //     ) {
-    //       const message = `${this.dexKey}-${this.network}: too much slippage on quote ${side} quoteTokenAmount ${quoteTokenAmount} / destAmount ${destAmount} < ${slippageFactor}`;
-    //       this.logger.warn(message);
-    //       throw new SlippageCheckError(message);
-    //     }
-    //   } else {
-    //     if (quoteTokenAmount < destAmount) {
-    //       // Won't receive enough assets
-    //       const message = `${this.dexKey}-${this.network}: too much slippage on quote ${side}  quoteTokenAmount ${quoteTokenAmount} < destAmount ${destAmount}`;
-    //       this.logger.warn(message);
-    //       throw new SlippageCheckError(message);
-    //     } else {
-    //       if (
-    //         baseTokenAmount >
-    //         BigInt(slippageFactor.times(srcAmount.toString()).toFixed(0))
-    //       ) {
-    //         const message = `${this.dexKey}-${
-    //           this.network
-    //         }: too much slippage on quote ${side} baseTokenAmount ${baseTokenAmount} / srcAmount ${srcAmount} > ${slippageFactor.toFixed()}`;
-    //         this.logger.warn(message);
-    //         throw new SlippageCheckError(message);
-    //       }
-    //     }
-    //   }
-
-    return [
-      {
-        ...optimalSwapExchange,
-        data: {
-          makerAddress: '0xe84D0CfE6ca3281822050AaCa31578e5205204Dd',
-          takerAddress: '0x00',
-          // mm,
-          // quoteData: rfq.quoteData,
-          // signature: rfq.signature,
-          // gasEstimate: rfq.gasEstimate,
-        },
-      },
-      // { deadline: minDeadline },
-      { deadline: 0n },
-    ];
-  }
-  catch(e: any) {
-    if (
-      e instanceof Error &&
-      e.message.endsWith('User is restricted from using Dexalot')
-    ) {
-      // this.logger.warn(
-      //   `${this.dexKey}-${this.network}: Encountered restricted user=${options.txOrigin}. Adding to local blacklist cache`,
-      // );
-      // await this.setBlacklist(options.txOrigin);
-    } else {
-      // await this.restrictMM(mm);
+    if (blacklist.includes(options.txOrigin)) {
+      this.logger.warn(
+        `${this.dexKey}-${this.network}: blacklisted TX Origin address '${options.txOrigin}' trying to build a transaction. Bailing...`,
+      );
+      throw new Error(
+        `${this.dexKey}-${
+          this.network
+        }: user=${options.txOrigin.toLowerCase()} is blacklisted`,
+      );
     }
 
-    throw e;
+    const chainId = this.network;
+
+    if (BigInt(optimalSwapExchange.srcAmount) === 0n) {
+      throw new Error('getFirmRate failed with srcAmount == 0');
+    }
+
+    try {
+      const orderResp = await this.rateFetcher.getFirmRate(
+        srcToken,
+        destToken,
+        optimalSwapExchange.srcAmount,
+        side,
+        options.txOrigin,
+      );
+
+      // const order: RFQOrder = {
+      //   nonceAndMeta: BigInt(orderResp.order.nonceAndMeta),
+      //   expiry: orderResp.order.expiry,
+      //   makerAsset: orderResp.order.makerAsset,
+      //   takerAsset: orderResp.order.takerAsset,
+      //   maker: orderResp.order.maker,
+      //   taker: orderResp.order.taker,
+      //   makerAmount: BigInt(orderResp.order.makerAmount),
+      //   takerAmount: BigInt(orderResp.order.takerAmount),
+      // }
+
+      const order: RFQOrder = {
+        nonceAndMeta: orderResp.order.nonceAndMeta,
+        expiry: orderResp.order.expiry,
+        makerAsset: orderResp.order.makerAsset,
+        takerAsset: orderResp.order.takerAsset,
+        maker: orderResp.order.maker,
+        taker: orderResp.order.taker,
+        makerAmount: orderResp.order.makerAmount,
+        takerAmount: orderResp.order.takerAmount,
+      };
+
+      assert(order.maker != null, `Invalid Order: No maker address`);
+      assert(order.taker != null, `Invalid Order: No taker address`);
+      assert(order.makerAmount != null, `Invalid Order: No maker amount`);
+      assert(order.takerAmount != null, `Invalid Order: No maker amount`);
+      assert(order.makerAsset != null, `Invalid Order: No maker asset`);
+      assert(order.takerAsset != null, `Invalid Order: No taker asset`);
+      assert(order.nonceAndMeta != null, `Invalid Order: No nonceAndMeta`);
+      assert(order.expiry != null, `Invalid Order: No expiry`);
+      assert(orderResp.order.signature != null, `Invalid Order: No signature`);
+
+      // const hash = this.calculateOrderHash(chainId, order, order.maker)
+      const hash = this.calculateHash(chainId, order, order.maker);
+
+      const provider = new ethers.providers.StaticJsonRpcProvider(
+        DexalotConfig.Dexalot[this.network].rpc,
+        chainId,
+      );
+
+      // const rfqContract = new ethers.Contract(order.maker, ["function isValidSignature(bytes32 _hash, bytes memory _signature) external view returns (bytes4)"], provider)
+      // const magicNumber = await rfqContract.isValidSignature(hash, orderResp.order.signature);
+      // // const magicNumber2 = await rfqContract.isValidSignature(hash2, orderResp.order.signature);
+      // // assert(
+      // //   magicNumber2 == "0x1626ba7e",
+      // //   `Invalid Signature`,
+      // // );
+      // assert(
+      //   magicNumber == "0x1626ba7e",
+      //   `Invalid Signature`,
+      // );
+
+      // if (side === SwapSide.SELL) {
+      //   const makerAmountLowerBounds: bigint = (BigInt(optimalSwapExchange.destAmount.toString()) * BigInt(9900)) / BigInt(10000);
+      //   const makerAmountUpperBounds: bigint = (BigInt(optimalSwapExchange.destAmount.toString()) * BigInt(10100)) / BigInt(10000);
+      //   assert (
+      //     BigInt(order.makerAmount) < makerAmountUpperBounds,
+      //     "Too much Slippage"
+      //   )
+      //   assert (
+      //     BigInt(order.makerAmount) > makerAmountLowerBounds,
+      //     "Too much Slippage"
+      //   )
+      // } else {
+      //   const makerAmountLowerBounds: bigint = (BigInt(optimalSwapExchange.srcAmount.toString()) * BigInt(9900)) / BigInt(10000);
+      //   const makerAmountUpperBounds: bigint = (BigInt(optimalSwapExchange.srcAmount.toString()) * BigInt(10100)) / BigInt(10000);
+      //   assert (
+      //     BigInt(order.makerAmount) < makerAmountUpperBounds,
+      //     "Too much Slippage"
+      //   )
+      //   assert (
+      //     BigInt(order.makerAmount) > makerAmountLowerBounds,
+      //     "Too much Slippage"
+      //   )
+      // }
+
+      const dexalotData: DexalotData = {
+        maker: order.maker,
+        quote: {
+          nonceAndMeta: order.nonceAndMeta,
+          expiry: order.expiry,
+          makerAsset: order.makerAsset,
+          takerAsset: order.takerAsset,
+          maker: order.maker,
+          taker: order.taker,
+          makerAmount: order.makerAmount,
+          takerAmount: order.takerAmount,
+          signature: orderResp.order.signature,
+        },
+      };
+
+      return [
+        {
+          ...optimalSwapExchange,
+          data: dexalotData,
+        },
+        { deadline: 0n },
+      ];
+    } catch (e: any) {
+      console.log(e);
+      throw new Error(`Invalid Quote`);
+    }
   }
 
   // This is optional function in case if your implementation has acquired any resources

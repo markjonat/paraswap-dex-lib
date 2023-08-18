@@ -120,7 +120,7 @@ const Dexes = [
   CurveV1Factory,
   SwaapV1,
   WstETH,
-  Hashflow,
+  // Hashflow,
   MaverickV1,
   Camelot,
 ];

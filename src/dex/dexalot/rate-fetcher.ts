@@ -3,6 +3,7 @@ import { Fetcher, SkippingRequest } from '../../lib/fetcher/fetcher';
 import { validateAndCast } from '../../lib/validators';
 import { Logger, Address, Token } from '../../types';
 import { Network } from '../../constants';
+import { ethers } from 'ethers';
 import {
   TokensResponse,
   PairsResponse,
@@ -40,7 +41,7 @@ export class RateFetcher {
   private blackListFetcher?: Fetcher<BlackListResponse>;
 
   private tokens: Record<string, TokenWithInfo> = {};
-  private addressToTokenMap: Record<string, TokenWithInfo> = {};
+  public addressToTokenMap: Record<string, TokenWithInfo> = {};
   private pairs: PairMap = {};
 
   public blackListCacheKey: string;
@@ -69,7 +70,7 @@ export class RateFetcher {
               tokensResponseValidator,
             );
           },
-          // authenticate: this.authHttp(config.tokensConfig.secret),
+          authenticate: this.authHttp(config.tokensConfig.secret),
         },
         handler: this.handleTokensResponse.bind(this),
       },
@@ -85,7 +86,7 @@ export class RateFetcher {
           caster: (data: unknown) => {
             return validateAndCast<PairsResponse>(data, pairsResponseValidator);
           },
-          // authenticate: this.authHttp(config.pairsConfig.secret),
+          authenticate: this.authHttp(config.pairsConfig.secret),
         },
         handler: this.handlePairsResponse.bind(this),
       },
@@ -101,7 +102,7 @@ export class RateFetcher {
           caster: (data: unknown) => {
             return validateAndCast<PricesResponse>(data, pricesResponse);
           },
-          // authenticate: this.authHttp(config.rateConfig.secret),
+          authenticate: this.authHttp(config.rateConfig.secret),
         },
         handler: this.handlePricesResponse.bind(this),
       },
@@ -121,7 +122,7 @@ export class RateFetcher {
                 blacklistResponseValidator,
               );
             },
-            // authenticate: this.authHttp(config.rateConfig.secret),
+            authenticate: this.authHttp(config.rateConfig.secret),
           },
           handler: this.handleBlackListResponse.bind(this),
         },
@@ -170,53 +171,59 @@ export class RateFetcher {
     this.rateFetcher.startPolling();
   }
 
-  private handlePricesResponse(resp: PricesResponse) {
+  private async handlePricesResponse(resp: PricesResponse) {
     const pairs = this.pairs;
-    Object.keys(resp.prices).forEach(pairName => {
-      const pair = pairs[pairName];
-      if (!pair) {
-        return;
-      }
-      const prices = resp.prices[pairName];
+    await Promise.all(
+      Object.keys(resp.prices).map(async pairName => {
+        const pair = pairs[pairName];
+        if (!pair) {
+          return;
+        }
+        const prices = resp.prices[pairName];
 
-      if (!prices.asks || !prices.bids) {
-        return;
-      }
+        if (!prices.asks || !prices.bids) {
+          return;
+        }
 
-      const baseToken = this.tokens[pair.base];
-      const quoteToken = this.tokens[pair.quote];
+        const baseToken = this.tokens[pair.base];
+        const quoteToken = this.tokens[pair.quote];
 
-      // if (!baseToken || !quoteToken) {
-      //   this.logger.warn(`missing base or quote token`);
-      //   return;
-      // }
+        if (!baseToken || !quoteToken) {
+          this.logger.warn(`missing base or quote token`);
+          return;
+        }
 
-      if (prices.bids.length) {
-        this.dexHelper.cache.setex(
-          this.dexKey,
-          this.dexHelper.config.data.network,
-          `${baseToken.address}_${quoteToken.address}_bids`,
-          10000, // this.config.pricesConfig.dataTTLS, TODO: change hardcoded value
-          JSON.stringify(prices.bids),
-        );
-      }
+        if (prices.bids.length) {
+          await this.dexHelper.cache.setex(
+            this.dexKey,
+            this.dexHelper.config.data.network,
+            `${baseToken.address}_${quoteToken.address}_bids`,
+            this.config.rateConfig.dataTTLS,
+            JSON.stringify(prices.bids),
+          );
+        }
 
-      if (prices.asks.length) {
-        this.dexHelper.cache.setex(
-          this.dexKey,
-          this.dexHelper.config.data.network,
-          `${baseToken.address}_${quoteToken.address}_asks`,
-          10000, // this.config.rateConfig.dataTTLS, TODO: change hardcoded value
-          JSON.stringify(prices.asks),
-        );
-      }
-    });
+        if (prices.asks.length) {
+          await this.dexHelper.cache.setex(
+            this.dexKey,
+            this.dexHelper.config.data.network,
+            `${baseToken.address}_${quoteToken.address}_asks`,
+            this.config.rateConfig.dataTTLS,
+            JSON.stringify(prices.asks),
+          );
+        }
+      }),
+    );
   }
 
-  private handleBlackListResponse(resp: BlackListResponse) {
-    for (const address of resp.blacklist) {
-      this.dexHelper.cache.sadd(this.blackListCacheKey, address.toLowerCase());
-    }
+  private async handleBlackListResponse(resp: BlackListResponse) {
+    await this.dexHelper.cache.setex(
+      this.dexKey,
+      this.dexHelper.config.data.network,
+      this.blackListCacheKey,
+      this.config.rateConfig.dataTTLS,
+      JSON.stringify(resp.blacklist),
+    );
   }
 
   async initialize() {
@@ -299,38 +306,21 @@ export class RateFetcher {
     userAddress: Address,
   ): Promise<FirmReturnObject> {
     if (side == SwapSide.SELL) {
-      const resp = await axios.post(
-        `${DEXALOT_API_URL}/api/rfq/firm`,
-        {
-          makerAsset: _destToken.address,
-          takerAsset: _srcToken.address,
-          takerAmount: srcAmount,
-          userAddress: userAddress,
-        },
-        {
-          headers: {
-            api_key: '23-ps',
-          },
-        },
-      );
+      const resp = await axios.post(`${DEXALOT_API_URL}/api/rfq/firm`, {
+        makerAsset: ethers.utils.getAddress(_destToken.address),
+        takerAsset: ethers.utils.getAddress(_srcToken.address),
+        takerAmount: srcAmount,
+        userAddress: userAddress,
+      });
       return resp.data;
     }
 
-    const resp = await axios.post(
-      `${DEXALOT_API_URL}/api/rfq/firm`,
-      {
-        makerAsset: _srcToken.address,
-        takerAsset: _destToken.address,
-        takerAmount: srcAmount,
-        userAddress: userAddress,
-      },
-      {
-        headers: {
-          api_key: '23-ps',
-        },
-      },
-    );
-
+    const resp = await axios.post(`${DEXALOT_API_URL}/api/rfq/firm`, {
+      makerAsset: ethers.utils.getAddress(_srcToken.address),
+      takerAsset: ethers.utils.getAddress(_destToken.address),
+      makerAmount: srcAmount,
+      userAddress: userAddress,
+    });
     return resp.data;
   }
 }

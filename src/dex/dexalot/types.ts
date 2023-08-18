@@ -14,19 +14,28 @@ export type DexalotData = {
   // returned by the API that can be used for
   // tx building. The data structure should be minimal.
   // Complete me!
-  makerAddress: Address;
-  takerAddress: Address;
-  // makerAmounts: string[];
-  // takerAmounts: string[];
+  maker: string;
+  quote?: {
+    nonceAndMeta: string;
+    expiry: number;
+    makerAsset: string;
+    takerAsset: string;
+    maker: string;
+    taker: string;
+    makerAmount: string;
+    takerAmount: string;
+    signature: string;
+  };
+
+  // quoteData: RFQOrder;
+  // signature: string;
 };
 
 export type DexParams = {
   // TODO: DexParams is set of parameters the can
   // be used to initiate a DEX fork.
-  // Complete me!
-  // _swapSigner: Address;
-  rfqAddress: Address;
   maker: Address;
+  rpc: string;
 };
 
 export type TokenData = {
@@ -101,6 +110,17 @@ export type FirmReturnObject = {
     takerAmount: string;
     signature: string;
   };
+};
+
+export type RFQOrder = {
+  nonceAndMeta: string;
+  expiry: number;
+  makerAsset: Address;
+  takerAsset: Address;
+  maker: Address;
+  taker: Address;
+  makerAmount: string;
+  takerAmount: string;
 };
 
 export type BlackListResponse = {
