@@ -742,7 +742,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
         { deadline: 0n },
       ];
     } catch (e: any) {
-      console.log(e);
+      this.logger.info(e);
       throw new Error(`Invalid Quote`);
     }
   }
