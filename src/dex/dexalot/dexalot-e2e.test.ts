@@ -89,6 +89,8 @@ const buildConfigForDexalotRFQ = (): RFQConfig => {
   };
 };
 
+jest.setTimeout(60000);
+
 const SKIP_TENDERLY = true; //!!getEnv('GENERIC_RFQ_SKIP_TENDERLY', true);
 const dexKey = 'dexalot';
 
@@ -137,6 +139,7 @@ describe(`GenericRFQ ${dexKey} E2E`, () => {
           //     );
           // }
         }
+
         const provider = new ethers.providers.StaticJsonRpcProvider(
           generateConfig(network).privateHttpProvider,
           network,
@@ -155,7 +158,7 @@ describe(`GenericRFQ ${dexKey} E2E`, () => {
               dexKey: dexKey,
               contractMethod: contractMethod,
               network,
-              sleepMs: 5000,
+              sleepMs: 10000,
               skipTenderly: SKIP_TENDERLY,
             });
             // await testE2E(

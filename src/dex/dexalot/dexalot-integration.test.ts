@@ -13,7 +13,7 @@ import {
   checkConstantPoolPrices,
   sleep,
 } from '../../../tests/utils';
-import { Tokens } from '../../../tests/constants-e2e';
+import { Tokens, GENERIC_ADDR1 } from '../../../tests/constants-e2e';
 import { Logger, Address, Token } from '../../types';
 
 /*
@@ -76,29 +76,28 @@ async function verifyPricing(
         destToken,
         amounts[i].toString(),
         side,
-        '0x05182E579FDfCf69E4390c3411D8FeA1fb6467cf',
+        GENERIC_ADDR1, // '0x05182E579FDfCf69E4390c3411D8FeA1fb6467cf',
       );
       const takerAmount: BigInt = BigInt(quote.order.takerAmount);
-      const makerAmount: bigint = BigInt(quote.order.makerAmount);
+      const makerAmount: BigInt = BigInt(quote.order.makerAmount);
 
       const isAmountEqualToTakerAmount = amounts[i] == takerAmount;
 
-      // expect(isAmountEqualToTakerAmount).toBe(true);
+      expect(isAmountEqualToTakerAmount).toBe(true);
 
-      // const makerAmountLowerBounds: BigInt =
-      //   (BigInt(prices[i]) * BigInt(9900)) / BigInt(10000);
-      // const makerAmountUpperBounds: BigInt =
-      //   (BigInt(prices[i]) * BigInt(10100)) / BigInt(10000);
+      const makerAmountLowerBounds: BigInt =
+        (BigInt(prices[i]) * BigInt(9900)) / BigInt(10000);
+      const makerAmountUpperBounds: BigInt =
+        (BigInt(prices[i]) * BigInt(10100)) / BigInt(10000);
 
-      // const isGreaterThanLowerBounds = makerAmount >= makerAmountLowerBounds;
-      // const isLessThanUpperBounds = makerAmount <= makerAmountUpperBounds;
+      const isGreaterThanLowerBounds = makerAmount >= makerAmountLowerBounds;
+      const isLessThanUpperBounds = makerAmount <= makerAmountUpperBounds;
 
-      // diff.push((makerAmount * BigInt(100)) / BigInt(prices[i]) )
-      diff.push(Number((makerAmount * 10000n) / BigInt(prices[i])) / 100);
-      outputs.push(makerAmount);
+      // diff.push(Number((makerAmount * 10000n) / BigInt(prices[i])) / 100);
+      // outputs.push(makerAmount);
 
-      // expect(isGreaterThanLowerBounds).toBe(true);
-      // expect(isLessThanUpperBounds).toBe(true);
+      expect(isGreaterThanLowerBounds).toBe(true);
+      expect(isLessThanUpperBounds).toBe(true);
       continue;
     }
 
@@ -107,10 +106,11 @@ async function verifyPricing(
       destToken,
       prices[i].toString(),
       side,
-      '0x05182E579FDfCf69E4390c3411D8FeA1fb6467cf',
+      GENERIC_ADDR1,
+      //'0x05182E579FDfCf69E4390c3411D8FeA1fb6467cf',
     );
 
-    const takerAmount: bigint = BigInt(quote.order.takerAmount);
+    const takerAmount: BigInt = BigInt(quote.order.takerAmount);
     const makerAmount: BigInt = BigInt(quote.order.makerAmount);
 
     const isAmountEqualToMakerAmount = prices[i] == makerAmount;
@@ -122,17 +122,17 @@ async function verifyPricing(
     const takerAmountUpperBounds: BigInt =
       (BigInt(amounts[i].toString()) * BigInt(10100)) / BigInt(10000);
 
-    // const isGreaterThanLowerBounds = takerAmount >= takerAmountLowerBounds;
-    // const isLessThanUpperBounds = takerAmount <= takerAmountUpperBounds;
-    // expect(isGreaterThanLowerBounds).toBe(true);
-    // expect(isLessThanUpperBounds).toBe(true);
+    const isGreaterThanLowerBounds = takerAmount >= takerAmountLowerBounds;
+    const isLessThanUpperBounds = takerAmount <= takerAmountUpperBounds;
+    expect(isGreaterThanLowerBounds).toBe(true);
+    expect(isLessThanUpperBounds).toBe(true);
 
     // diff.push((takerAmount * BigInt(10000)) /   )
-    diff.push(Number((takerAmount * 10000n) / BigInt(amounts[i])) / 100);
-    outputs.push(takerAmount);
+    // diff.push(Number((takerAmount * 10000n) / BigInt(amounts[i])) / 100);
+    // outputs.push(takerAmount);
   }
 
-  console.log(diff);
+  // console.log(diff);
 }
 
 async function testPricingOnNetwork(
@@ -191,6 +191,8 @@ async function testPricingOnNetwork(
   );
 }
 
+jest.setTimeout(200000);
+
 describe('Dexalot', function () {
   const dexKey = 'Dexalot';
   let blockNumber: number;
@@ -204,13 +206,13 @@ describe('Dexalot', function () {
 
     // TODO: Put here token Symbol to check against
     // Don't forget to update relevant tokens in constant-e2e.ts
-    const srcTokenSymbol = 'ALOT';
-    // const srcTokenSymbol = 'AVAX';
+    // const srcTokenSymbol = 'ALOT';
+    const srcTokenSymbol = 'AVAX';
     const destTokenSymbol = 'USDC';
 
     // TODO: remove this when testing outside of dev
-    tokens['USDC'].address = '0x68B773B8C10F2ACE8aC51980A1548B6B48a2eC54';
-    tokens['ALOT'].address = '0x9983F755Bbd60d1886CbfE103c98C272AA0F03d6';
+    // tokens['USDC'].address = '0x68B773B8C10F2ACE8aC51980A1548B6B48a2eC54';
+    // tokens['ALOT'].address = '0x9983F755Bbd60d1886CbfE103c98C272AA0F03d6';
     // tokens['AVAX'].address = '0x0000000000000000000000000000000000000000';
 
     const amountsForSell = [
@@ -241,34 +243,6 @@ describe('Dexalot', function () {
       20n * BI_POWS[tokens[destTokenSymbol].decimals],
     ];
 
-    // const amountsForSell = [
-    //   0n,
-    //   50n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   100n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   200n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   300n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   400n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   500n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   600n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   700n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   800n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    //   1000n * BI_POWS[tokens[srcTokenSymbol].decimals],
-    // ];
-
-    // const amountsForBuy = [
-    //   0n,
-    //   50n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   100n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   200n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   300n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   400n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   500n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   600n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   700n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   800n * BI_POWS[tokens[destTokenSymbol].decimals],
-    //   1000n * BI_POWS[tokens[destTokenSymbol].decimals],
-    // ];
-
     // beforeAll(async () => {
     //   blockNumber = await dexHelper.web3Provider.eth.getBlockNumber();
     //   dexalot = new Dexalot(network, dexKey, dexHelper);
@@ -285,7 +259,7 @@ describe('Dexalot', function () {
       if (dexalot.initializePricing) {
         await dexalot.initializePricing(blockNumber);
       }
-      await sleep(3000);
+      await sleep(6000);
 
       await testPricingOnNetwork(
         dexalot,
@@ -308,7 +282,8 @@ describe('Dexalot', function () {
       if (dexalot.initializePricing) {
         await dexalot.initializePricing(blockNumber);
       }
-      await sleep(3000);
+
+      await sleep(6000);
       await testPricingOnNetwork(
         dexalot,
         network,
@@ -353,8 +328,8 @@ describe('Dexalot', function () {
       }
     });
 
-    // afterAll(() => {
-    //   dexalot.stop()
-    // });
+    afterAll(() => {
+      dexalot.stop();
+    });
   });
 });

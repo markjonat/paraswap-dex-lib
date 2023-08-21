@@ -37,12 +37,12 @@ export const testConfig: {
   //   },
   // ],
   [Network.AVALANCHE]: [
-    // {
-    //   srcToken: 'AVAX',
-    //   destToken: 'USDC',
-    //   swapSide: SwapSide.BUY,
-    //   amount: '10000000',
-    // },
+    {
+      srcToken: 'AVAX',
+      destToken: 'USDC',
+      swapSide: SwapSide.BUY,
+      amount: '10000000',
+    },
     {
       srcToken: 'AVAX',
       destToken: 'USDC',

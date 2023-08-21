@@ -298,6 +298,69 @@ export class RateFetcher {
     return [];
   }
 
+  // async getFirmRate(
+  //   _srcToken: Token,
+  //   _destToken: Token,
+  //   srcAmount: string,
+  //   side: SwapSide,
+  //   userAddress: Address,
+  // ): Promise<FirmReturnObject> {
+  //   if (side == SwapSide.SELL) {
+  //     try {
+  //       const resp = await axios.post(`${DEXALOT_API_URL}/api/rfq/firm`, {
+  //         makerAsset: ethers.utils.getAddress(_destToken.address),
+  //         takerAsset: ethers.utils.getAddress(_srcToken.address),
+  //         takerAmount: srcAmount,
+  //         userAddress: userAddress, //"0xbe9317f6711e2da074fe1f168fd9c402bc0a9d1b", //userAddress,
+  //       });
+  //       return resp.data;
+  //     } catch (e: any) {
+  //       console.log(e);
+  //       return {
+  //         order: {
+  //           nonceAndMeta: '',
+  //           expiry: 0,
+  //           makerAsset: '',
+  //           takerAsset: '',
+  //           maker: '',
+  //           taker: '',
+  //           makerAmount: '',
+  //           takerAmount: '',
+  //           signature: '',
+  //         },
+  //       };
+  //     }
+  //   }
+  //   try {
+  //     const resp = await axios.post(`${DEXALOT_API_URL}/api/rfq/firm`, {
+  //       makerAsset: ethers.utils.getAddress(_srcToken.address),
+  //       takerAsset: ethers.utils.getAddress(_destToken.address),
+  //       makerAmount: srcAmount,
+  //       userAddress: userAddress, //"0xbe9317f6711e2da074fe1f168fd9c402bc0a9d1b",//userAddress,
+  //       // makerAsset: "0x0000000000000000000000000000000000000000",
+  //       // takerAsset: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+  //       // makerAmount: "918357975939021200",
+  //       // userAddress: "0xbe9317f6711e2da074fe1f168fd9c402bc0a9d1b"
+  //     });
+  //     return resp.data;
+  //   } catch (e: any) {
+  //     console.log(e);
+  //     return {
+  //       order: {
+  //         nonceAndMeta: '',
+  //         expiry: 0,
+  //         makerAsset: '',
+  //         takerAsset: '',
+  //         maker: '',
+  //         taker: '',
+  //         makerAmount: '',
+  //         takerAmount: '',
+  //         signature: '',
+  //       },
+  //     };
+  //   }
+  // }
+
   async getFirmRate(
     _srcToken: Token,
     _destToken: Token,
@@ -314,7 +377,6 @@ export class RateFetcher {
       });
       return resp.data;
     }
-
     const resp = await axios.post(`${DEXALOT_API_URL}/api/rfq/firm`, {
       makerAsset: ethers.utils.getAddress(_srcToken.address),
       takerAsset: ethers.utils.getAddress(_destToken.address),

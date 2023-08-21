@@ -71,8 +71,8 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
             accessKey: '',
             secretKey: '',
           },
-          intervalMs: 10000,
-          dataTTLS: 10000,
+          intervalMs: 600000,
+          dataTTLS: 1200,
         },
         pairsConfig: {
           reqParams: {
@@ -84,8 +84,8 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
             accessKey: '',
             secretKey: '',
           },
-          intervalMs: 10000,
-          dataTTLS: 10000,
+          intervalMs: 600000,
+          dataTTLS: 1200,
         },
         rateConfig: {
           reqParams: {
@@ -97,8 +97,8 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
             accessKey: '',
             secretKey: '',
           },
-          intervalMs: 10000,
-          dataTTLS: 10000,
+          intervalMs: 1000,
+          dataTTLS: 2,
         },
         firmRateConfig: {
           url: `${DEXALOT_API_URL}/api/rfq/firm`,
@@ -126,8 +126,8 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
             accessKey: '',
             secretKey: '',
           },
-          intervalMs: 10000,
-          dataTTLS: 10000,
+          intervalMs: 600000,
+          dataTTLS: 1200,
         },
         maker: '0xd62f9E53Be8884C21f5aa523B3c7D6F9a0050af5',
       },
@@ -327,9 +327,6 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     );
 
     this.logger.info(outputs);
-
-    // TODO: call ratefetcher firm
-    // Migh make sense to do this in different function so not in integration test?
 
     // TODO: input correct values
     return [
@@ -695,29 +692,37 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
       //   `Invalid Signature`,
       // );
 
-      // if (side === SwapSide.SELL) {
-      //   const makerAmountLowerBounds: bigint = (BigInt(optimalSwapExchange.destAmount.toString()) * BigInt(9900)) / BigInt(10000);
-      //   const makerAmountUpperBounds: bigint = (BigInt(optimalSwapExchange.destAmount.toString()) * BigInt(10100)) / BigInt(10000);
-      //   assert (
-      //     BigInt(order.makerAmount) < makerAmountUpperBounds,
-      //     "Too much Slippage"
-      //   )
-      //   assert (
-      //     BigInt(order.makerAmount) > makerAmountLowerBounds,
-      //     "Too much Slippage"
-      //   )
-      // } else {
-      //   const makerAmountLowerBounds: bigint = (BigInt(optimalSwapExchange.srcAmount.toString()) * BigInt(9900)) / BigInt(10000);
-      //   const makerAmountUpperBounds: bigint = (BigInt(optimalSwapExchange.srcAmount.toString()) * BigInt(10100)) / BigInt(10000);
-      //   assert (
-      //     BigInt(order.makerAmount) < makerAmountUpperBounds,
-      //     "Too much Slippage"
-      //   )
-      //   assert (
-      //     BigInt(order.makerAmount) > makerAmountLowerBounds,
-      //     "Too much Slippage"
-      //   )
-      // }
+      if (side === SwapSide.SELL) {
+        const makerAmountLowerBounds: bigint =
+          (BigInt(optimalSwapExchange.destAmount.toString()) * BigInt(9900)) /
+          BigInt(10000);
+        const makerAmountUpperBounds: bigint =
+          (BigInt(optimalSwapExchange.destAmount.toString()) * BigInt(10100)) /
+          BigInt(10000);
+        assert(
+          BigInt(order.makerAmount) < makerAmountUpperBounds,
+          'Too much Slippage',
+        );
+        assert(
+          BigInt(order.makerAmount) > makerAmountLowerBounds,
+          'Too much Slippage',
+        );
+      } else {
+        const makerAmountLowerBounds: bigint =
+          (BigInt(optimalSwapExchange.srcAmount.toString()) * BigInt(9900)) /
+          BigInt(10000);
+        const makerAmountUpperBounds: bigint =
+          (BigInt(optimalSwapExchange.srcAmount.toString()) * BigInt(10100)) /
+          BigInt(10000);
+        assert(
+          BigInt(order.makerAmount) < makerAmountUpperBounds,
+          'Too much Slippage',
+        );
+        assert(
+          BigInt(order.makerAmount) > makerAmountLowerBounds,
+          'Too much Slippage',
+        );
+      }
 
       const dexalotData: DexalotData = {
         maker: order.maker,
