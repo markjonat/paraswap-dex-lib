@@ -103,13 +103,6 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
         firmRateConfig: {
           url: `${DEXALOT_API_URL}/api/rfq/firm`,
           method: 'POST',
-          // params: {
-          //   string,
-          //   string,
-          //   string,
-          //   string,
-          //   string,
-          // },
           secret: {
             domain: '',
             accessKey: '',
@@ -129,7 +122,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
           intervalMs: 600000,
           dataTTLS: 1200,
         },
-        maker: '0xd62f9E53Be8884C21f5aa523B3c7D6F9a0050af5',
+        maker: DexalotConfig.Dexalot[Network.AVALANCHE].maker,
       },
       this.dexKey,
       this.logger,
@@ -142,18 +135,15 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
   // implement this function
   async initializePricing(blockNumber: number): Promise<void> {
     // TODO: complete me!
-    // api.prices()
     await this.rateFetcher.initialize();
-    this.logger.info('PRICING INITIALIZED');
     if (!this.dexHelper.config.isSlave) {
-      await this.rateFetcher.start();
+      this.rateFetcher.start();
     }
-
     return;
   }
 
-  async stop() {
-    await this.rateFetcher.stop();
+  stop() {
+    this.rateFetcher.stop();
   }
 
   // Returns the list of contract adapters (name and index)
@@ -251,8 +241,8 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
   ): Promise<null | ExchangePrices<DexalotData>> {
     // TODO: complete me!
     // call firm, return amount
-    const pairs = await this.rateFetcher.getPairs();
-    const tokens = await this.rateFetcher.getTokensByAddress();
+    const pairs = this.rateFetcher.getPairs();
+    const tokens = this.rateFetcher.getTokensByAddress();
 
     // change address to dev address
     const srcSymbol = tokens[srcToken.address.toLowerCase()].symbol;
@@ -389,10 +379,6 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     data: DexalotData,
     side: SwapSide,
   ): Promise<SimpleExchangeParam> {
-    // TODO: complete me!
-    // format params for swap
-    // const { makerAddress } = data;
-
     assert(
       data.quote !== undefined,
       `${this.dexKey}-${this.network}: quoteData undefined`,
@@ -450,7 +436,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     // dont use pools, return just the pair?
     // itterate and find top trading pairs
 
-    const tokens = await this.rateFetcher.getTokens();
+    const tokens = this.rateFetcher.getTokens();
 
     let symbol = '';
 
@@ -462,7 +448,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
       }
     }
 
-    const pairs = await this.rateFetcher.getPairs();
+    const pairs = this.rateFetcher.getPairs();
 
     let pairsByLiquidity = [];
     for (const pairName of Object.keys(pairs)) {
@@ -503,47 +489,6 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
       userAddress,
     );
   }
-
-  // buildOrderData(
-  //   chainId: Network,
-  //   params: RFQOrder,
-  //   contractAddress: string,
-  // ) {
-  //   const domain = {
-  //     name: "Dexalot",
-  //     version: "1",
-  //     chainId: chainId,
-  //     verifyingContract: contractAddress,
-  //   };
-
-  //   const types = {
-  //     Quote: [
-  //       { name: "nonceAndMeta", type: "uint256", },
-  //       { name: "expiry", type: "uint128", },
-  //       { name: "makerAsset", type: "address", },
-  //       { name: "takerAsset", type: "address", },
-  //       { name: "maker", type: "address", },
-  //       { name: "taker", type: "address", },
-  //       { name: "makerAmount", type: "uint256", },
-  //       { name: "takerAmount", type: "uint256", },
-  //     ],
-  //   };
-
-  //   return { domain, types };
-  // }
-
-  // calculateOrderHash(
-  //   chainId: Network,
-  //   params: RFQOrder,
-  //   contractAddress: string,
-  // ) {
-  //   const { domain, types } = this.buildOrderData(
-  //     chainId,
-  //     params,
-  //     contractAddress,
-  //   );
-  //   return _TypedDataEncoder.hash(domain, types, params);
-  // }
 
   calculateHash(chainId: Network, params: RFQOrder, verifierContract: string) {
     const structType =
@@ -640,17 +585,6 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
         options.txOrigin,
       );
 
-      // const order: RFQOrder = {
-      //   nonceAndMeta: BigInt(orderResp.order.nonceAndMeta),
-      //   expiry: orderResp.order.expiry,
-      //   makerAsset: orderResp.order.makerAsset,
-      //   takerAsset: orderResp.order.takerAsset,
-      //   maker: orderResp.order.maker,
-      //   taker: orderResp.order.taker,
-      //   makerAmount: BigInt(orderResp.order.makerAmount),
-      //   takerAmount: BigInt(orderResp.order.takerAmount),
-      // }
-
       const order: RFQOrder = {
         nonceAndMeta: orderResp.order.nonceAndMeta,
         expiry: orderResp.order.expiry,
@@ -672,21 +606,15 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
       assert(order.expiry != null, `Invalid Order: No expiry`);
       assert(orderResp.order.signature != null, `Invalid Order: No signature`);
 
-      // const hash = this.calculateOrderHash(chainId, order, order.maker)
-      const hash = this.calculateHash(chainId, order, order.maker);
+      // const hash = this.calculateHash(chainId, order, order.maker);
 
-      const provider = new ethers.providers.StaticJsonRpcProvider(
-        DexalotConfig.Dexalot[this.network].rpc,
-        chainId,
-      );
+      // const provider = new ethers.providers.StaticJsonRpcProvider(
+      //   DexalotConfig.Dexalot[this.network].rpc,
+      //   chainId,
+      // );
 
       // const rfqContract = new ethers.Contract(order.maker, ["function isValidSignature(bytes32 _hash, bytes memory _signature) external view returns (bytes4)"], provider)
       // const magicNumber = await rfqContract.isValidSignature(hash, orderResp.order.signature);
-      // // const magicNumber2 = await rfqContract.isValidSignature(hash2, orderResp.order.signature);
-      // // assert(
-      // //   magicNumber2 == "0x1626ba7e",
-      // //   `Invalid Signature`,
-      // // );
       // assert(
       //   magicNumber == "0x1626ba7e",
       //   `Invalid Signature`,
@@ -744,7 +672,7 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
           ...optimalSwapExchange,
           data: dexalotData,
         },
-        { deadline: 0n },
+        { deadline: BigInt(order.expiry) },
       ];
     } catch (e: any) {
       this.logger.info(e);
@@ -752,9 +680,22 @@ export class Dexalot extends SimpleExchange implements IDex<DexalotData> {
     }
   }
 
+  // async sleep(time: number) {
+  //   new Promise(resolve => {
+  //     setTimeout(resolve, time);
+  //   });
+  // }
+
+  // async releaseResources(): Promise<void> {
+  //   this.rateFetcher.stop()
+  //   await this.sleep(10000);
+  //   // TODO: complete me!
+  // }
+
   // This is optional function in case if your implementation has acquired any resources
   // you need to release for graceful shutdown. For example, it may be any interval timer
   releaseResources(): AsyncOrSync<void> {
+    this.rateFetcher.stop();
     // TODO: complete me!
   }
 }

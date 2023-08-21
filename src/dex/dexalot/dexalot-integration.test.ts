@@ -67,16 +67,14 @@ async function verifyPricing(
   amounts: bigint[],
   prices: bigint[],
 ) {
-  let diff: number[] = [];
-  let outputs: bigint[] = [];
-  for (let i = 1; i < amounts.length; i++) {
+  for (let i = 0; i < amounts.length; i++) {
     if (side == SwapSide.SELL) {
       const quote = await dexalot.getFirmRate(
         srcToken,
         destToken,
         amounts[i].toString(),
         side,
-        GENERIC_ADDR1, // '0x05182E579FDfCf69E4390c3411D8FeA1fb6467cf',
+        GENERIC_ADDR1,
       );
       const takerAmount: BigInt = BigInt(quote.order.takerAmount);
       const makerAmount: BigInt = BigInt(quote.order.makerAmount);
@@ -93,9 +91,6 @@ async function verifyPricing(
       const isGreaterThanLowerBounds = makerAmount >= makerAmountLowerBounds;
       const isLessThanUpperBounds = makerAmount <= makerAmountUpperBounds;
 
-      // diff.push(Number((makerAmount * 10000n) / BigInt(prices[i])) / 100);
-      // outputs.push(makerAmount);
-
       expect(isGreaterThanLowerBounds).toBe(true);
       expect(isLessThanUpperBounds).toBe(true);
       continue;
@@ -107,7 +102,6 @@ async function verifyPricing(
       prices[i].toString(),
       side,
       GENERIC_ADDR1,
-      //'0x05182E579FDfCf69E4390c3411D8FeA1fb6467cf',
     );
 
     const takerAmount: BigInt = BigInt(quote.order.takerAmount);
@@ -115,7 +109,7 @@ async function verifyPricing(
 
     const isAmountEqualToMakerAmount = prices[i] == makerAmount;
 
-    // expect(isAmountEqualToMakerAmount).toBe(true);
+    expect(isAmountEqualToMakerAmount).toBe(true);
 
     const takerAmountLowerBounds: BigInt =
       (BigInt(amounts[i].toString()) * BigInt(9900)) / BigInt(10000);
@@ -126,13 +120,7 @@ async function verifyPricing(
     const isLessThanUpperBounds = takerAmount <= takerAmountUpperBounds;
     expect(isGreaterThanLowerBounds).toBe(true);
     expect(isLessThanUpperBounds).toBe(true);
-
-    // diff.push((takerAmount * BigInt(10000)) /   )
-    // diff.push(Number((takerAmount * 10000n) / BigInt(amounts[i])) / 100);
-    // outputs.push(takerAmount);
   }
-
-  // console.log(diff);
 }
 
 async function testPricingOnNetwork(
@@ -210,11 +198,6 @@ describe('Dexalot', function () {
     const srcTokenSymbol = 'AVAX';
     const destTokenSymbol = 'USDC';
 
-    // TODO: remove this when testing outside of dev
-    // tokens['USDC'].address = '0x68B773B8C10F2ACE8aC51980A1548B6B48a2eC54';
-    // tokens['ALOT'].address = '0x9983F755Bbd60d1886CbfE103c98C272AA0F03d6';
-    // tokens['AVAX'].address = '0x0000000000000000000000000000000000000000';
-
     const amountsForSell = [
       0n,
       1n * BI_POWS[tokens[srcTokenSymbol].decimals],
@@ -243,15 +226,6 @@ describe('Dexalot', function () {
       20n * BI_POWS[tokens[destTokenSymbol].decimals],
     ];
 
-    // beforeAll(async () => {
-    //   blockNumber = await dexHelper.web3Provider.eth.getBlockNumber();
-    //   dexalot = new Dexalot(network, dexKey, dexHelper);
-    //   if (dexalot.initializePricing) {
-    //     await dexalot.initializePricing(blockNumber);
-    //   }
-    //   await sleep(5000);
-    // });
-
     it('getPoolIdentifiers and getPricesVolume SELL', async function () {
       blockNumber = await dexHelper.web3Provider.eth.getBlockNumber();
       dexalot = new Dexalot(network, dexKey, dexHelper);
@@ -273,7 +247,7 @@ describe('Dexalot', function () {
         '', // TODO: Put here proper function name to check pricing
       );
 
-      await dexalot.stop();
+      // dexalot.stop();
     });
 
     it('getPoolIdentifiers and getPricesVolume BUY', async function () {
@@ -296,7 +270,7 @@ describe('Dexalot', function () {
         '', // TODO: Put here proper function name to check pricing
       );
 
-      await dexalot.stop();
+      // dexalot.stop();
     });
 
     // // // TODO: remove initialize pricing
@@ -309,10 +283,7 @@ describe('Dexalot', function () {
         await newDexalot.initializePricing(blockNumber);
       }
       await sleep(3000);
-      // const newDexalot = new Dexalot(network, dexKey, dexHelper);
-      // if (newDexalot.updatePoolState) {
-      //   await newDexalot.updatePoolState();
-      // }
+
       const poolLiquidity = await newDexalot.getTopPoolsForToken(
         tokens[srcTokenSymbol].address,
         10,
@@ -322,14 +293,11 @@ describe('Dexalot', function () {
       if (!newDexalot.hasConstantPriceLargeAmounts) {
         checkPoolsLiquidity(
           poolLiquidity,
-          Tokens[network][srcTokenSymbol].address,
+          Tokens[network][destTokenSymbol].address,
           dexKey,
         );
       }
-    });
-
-    afterAll(() => {
-      dexalot.stop();
+      // dexalot.stop();
     });
   });
 });

@@ -38,7 +38,7 @@ export class RateFetcher {
   private tokensFetcher: Fetcher<TokensResponse>;
   private pairsFetcher: Fetcher<PairsResponse>;
   private rateFetcher: Fetcher<PricesResponse>;
-  private blackListFetcher?: Fetcher<BlackListResponse>;
+  private blackListFetcher: Fetcher<BlackListResponse>;
 
   private tokens: Record<string, TokenWithInfo> = {};
   public addressToTokenMap: Record<string, TokenWithInfo> = {};
@@ -75,7 +75,7 @@ export class RateFetcher {
         handler: this.handleTokensResponse.bind(this),
       },
       config.tokensConfig.intervalMs,
-      this.logger,
+      logger,
     );
 
     this.pairsFetcher = new Fetcher<PairsResponse>(
@@ -91,7 +91,7 @@ export class RateFetcher {
         handler: this.handlePairsResponse.bind(this),
       },
       config.pairsConfig.intervalMs,
-      this.logger,
+      logger,
     );
 
     this.rateFetcher = new Fetcher<PricesResponse>(
@@ -110,26 +110,26 @@ export class RateFetcher {
       logger,
     );
 
-    if (config.blacklistConfig) {
-      this.blackListFetcher = new Fetcher<BlackListResponse>(
-        dexHelper.httpRequest,
-        {
-          info: {
-            requestOptions: config.blacklistConfig.reqParams,
-            caster: (data: unknown) => {
-              return validateAndCast<BlackListResponse>(
-                data,
-                blacklistResponseValidator,
-              );
-            },
-            authenticate: this.authHttp(config.rateConfig.secret),
+    // if (config.blacklistConfig) {
+    this.blackListFetcher = new Fetcher<BlackListResponse>(
+      dexHelper.httpRequest,
+      {
+        info: {
+          requestOptions: config.blacklistConfig.reqParams,
+          caster: (data: unknown) => {
+            return validateAndCast<BlackListResponse>(
+              data,
+              blacklistResponseValidator,
+            );
           },
-          handler: this.handleBlackListResponse.bind(this),
+          authenticate: this.authHttp(config.rateConfig.secret),
         },
-        config.blacklistConfig.intervalMs,
-        logger,
-      );
-    }
+        handler: this.handleBlackListResponse.bind(this),
+      },
+      config.blacklistConfig.intervalMs,
+      logger,
+    );
+    // }
 
     this.blackListCacheKey = `${this.dexHelper.config.data.network}_${this.dexKey}_blacklist`;
   }
@@ -239,32 +239,27 @@ export class RateFetcher {
     }
   }
 
-  async start() {
+  start() {
     this.tokensFetcher.startPolling();
     this.pairsFetcher.startPolling();
-    if (this.blackListFetcher) {
-      this.blackListFetcher.startPolling();
-    }
+    this.blackListFetcher.startPolling();
   }
-  async stop() {
+  stop() {
     this.tokensFetcher.stopPolling();
     this.pairsFetcher.stopPolling();
     this.rateFetcher.stopPolling();
-
-    if (this.blackListFetcher) {
-      this.blackListFetcher.stopPolling();
-    }
+    this.blackListFetcher.stopPolling();
   }
 
-  async getTokens(): Promise<Record<string, TokenWithInfo>> {
+  getTokens(): Record<string, TokenWithInfo> {
     return this.tokens;
   }
 
-  async getPairs(): Promise<PairMap> {
+  getPairs(): PairMap {
     return this.pairs;
   }
 
-  async getTokensByAddress(): Promise<Record<string, TokenWithInfo>> {
+  getTokensByAddress(): Record<string, TokenWithInfo> {
     return this.addressToTokenMap;
   }
 
@@ -297,69 +292,6 @@ export class RateFetcher {
     }
     return [];
   }
-
-  // async getFirmRate(
-  //   _srcToken: Token,
-  //   _destToken: Token,
-  //   srcAmount: string,
-  //   side: SwapSide,
-  //   userAddress: Address,
-  // ): Promise<FirmReturnObject> {
-  //   if (side == SwapSide.SELL) {
-  //     try {
-  //       const resp = await axios.post(`${DEXALOT_API_URL}/api/rfq/firm`, {
-  //         makerAsset: ethers.utils.getAddress(_destToken.address),
-  //         takerAsset: ethers.utils.getAddress(_srcToken.address),
-  //         takerAmount: srcAmount,
-  //         userAddress: userAddress, //"0xbe9317f6711e2da074fe1f168fd9c402bc0a9d1b", //userAddress,
-  //       });
-  //       return resp.data;
-  //     } catch (e: any) {
-  //       console.log(e);
-  //       return {
-  //         order: {
-  //           nonceAndMeta: '',
-  //           expiry: 0,
-  //           makerAsset: '',
-  //           takerAsset: '',
-  //           maker: '',
-  //           taker: '',
-  //           makerAmount: '',
-  //           takerAmount: '',
-  //           signature: '',
-  //         },
-  //       };
-  //     }
-  //   }
-  //   try {
-  //     const resp = await axios.post(`${DEXALOT_API_URL}/api/rfq/firm`, {
-  //       makerAsset: ethers.utils.getAddress(_srcToken.address),
-  //       takerAsset: ethers.utils.getAddress(_destToken.address),
-  //       makerAmount: srcAmount,
-  //       userAddress: userAddress, //"0xbe9317f6711e2da074fe1f168fd9c402bc0a9d1b",//userAddress,
-  //       // makerAsset: "0x0000000000000000000000000000000000000000",
-  //       // takerAsset: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
-  //       // makerAmount: "918357975939021200",
-  //       // userAddress: "0xbe9317f6711e2da074fe1f168fd9c402bc0a9d1b"
-  //     });
-  //     return resp.data;
-  //   } catch (e: any) {
-  //     console.log(e);
-  //     return {
-  //       order: {
-  //         nonceAndMeta: '',
-  //         expiry: 0,
-  //         makerAsset: '',
-  //         takerAsset: '',
-  //         maker: '',
-  //         taker: '',
-  //         makerAmount: '',
-  //         takerAmount: '',
-  //         signature: '',
-  //       },
-  //     };
-  //   }
-  // }
 
   async getFirmRate(
     _srcToken: Token,

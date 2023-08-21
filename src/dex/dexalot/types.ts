@@ -157,7 +157,7 @@ export type RFQConfig = {
   pairsConfig: FetcherParams;
   rateConfig: FetcherParams;
   firmRateConfig: RequestConfigWithAuth;
-  blacklistConfig?: FetcherParams;
+  blacklistConfig: FetcherParams;
   maker: Address;
   pathToRemove?: string;
 };

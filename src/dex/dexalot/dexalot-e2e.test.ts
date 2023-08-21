@@ -27,69 +27,69 @@ if (!PK_KEY) {
 
 const testAccount = new ethers.Wallet(PK_KEY!);
 
-jest.setTimeout(1000 * 60 * 3);
+// jest.setTimeout(1000 * 60 * 3);
 
-const buildConfigForDexalotRFQ = (): RFQConfig => {
-  const url = DEXALOT_API_URL; // getEnv('dexalot_url');
+// const buildConfigForDexalotRFQ = (): RFQConfig => {
+//   const url = DEXALOT_API_URL; // getEnv('dexalot_url');
 
-  const secret = {
-    secretKey: Buffer.from(getEnv('GENERIC_RFQ_SECRET_KEY'), 'base64').toString(
-      'binary',
-    ),
-    accessKey: getEnv('GENERIC_RFQ_ACCESS_KEY'),
-    domain: 'paraswap',
-  };
+//   const secret = {
+//     secretKey: Buffer.from(getEnv('GENERIC_RFQ_SECRET_KEY'), 'base64').toString(
+//       'binary',
+//     ),
+//     accessKey: getEnv('GENERIC_RFQ_ACCESS_KEY'),
+//     domain: 'paraswap',
+//   };
 
-  return {
-    maker: DexalotConfig.Dexalot[Network.AVALANCHE].maker,
-    tokensConfig: {
-      reqParams: {
-        url: `${url}/tokens`,
-        method: 'GET',
-      },
-      secret,
-      intervalMs: 1000 * 60 * 60 * 10, // every 10 minutes
-      dataTTLS: 1000 * 60 * 60 * 11, // ttl 11 minutes
-    },
-    pairsConfig: {
-      reqParams: {
-        url: `${url}/pairs`,
-        method: 'GET',
-      },
-      secret,
-      intervalMs: 1000 * 60 * 60 * 10, // every 10 minutes
-      dataTTLS: 1000 * 60 * 60 * 11, // ttl 11 minutes
-    },
-    rateConfig: {
-      reqParams: {
-        url: `${url}/prices`,
-        method: 'GET',
-      },
-      secret,
-      intervalMs: 1000 * 60 * 60 * 1, // every 1 minute
-      dataTTLS: 1000 * 60 * 60 * 1, // ttl 1 minute
-    },
-    firmRateConfig: {
-      url: `${url}/firm`,
-      method: 'POST',
-      secret,
-      headers: {
-        api_key: '23-ps',
-      },
-    },
-    blacklistConfig: {
-      reqParams: {
-        url: `${url}/blacklist`,
-        method: 'GET',
-      },
-      secret,
-      intervalMs: 1000 * 60 * 60 * 10,
-      dataTTLS: 1000 * 60 * 60 * 11,
-    },
-  };
-};
+//   return {
+//     maker: DexalotConfig.Dexalot[Network.AVALANCHE].maker,
+//     tokensConfig: {
+//       reqParams: {
+//         url: `${url}/tokens`,
+//         method: 'GET',
+//       },
+//       secret,
+//       intervalMs: 1000 * 60 * 60 * 10, // every 10 minutes
+//       dataTTLS: 1000 * 60 * 60 * 11, // ttl 11 minutes
+//     },
+//     pairsConfig: {
+//       reqParams: {
+//         url: `${url}/pairs`,
+//         method: 'GET',
+//       },
+//       secret,
+//       intervalMs: 1000 * 60 * 60 * 10, // every 10 minutes
+//       dataTTLS: 1000 * 60 * 60 * 11, // ttl 11 minutes
+//     },
+//     rateConfig: {
+//       reqParams: {
+//         url: `${url}/prices`,
+//         method: 'GET',
+//       },
+//       secret,
+//       intervalMs: 1000 * 60 * 60 * 1, // every 1 minute
+//       dataTTLS: 1000 * 60 * 60 * 1, // ttl 1 minute
+//     },
+//     firmRateConfig: {
+//       url: `${url}/firm`,
+//       method: 'POST',
+//       secret,
+//       headers: {
+//         api_key: '23-ps',
+//       },
+//     },
+//     blacklistConfig: {
+//       reqParams: {
+//         url: `${url}/blacklist`,
+//         method: 'GET',
+//       },
+//       secret,
+//       intervalMs: 1000 * 60 * 60 * 10,
+//       dataTTLS: 1000 * 60 * 60 * 11,
+//     },
+//   };
+// };
 
-jest.setTimeout(60000);
+jest.setTimeout(120000);
 
 const SKIP_TENDERLY = true; //!!getEnv('GENERIC_RFQ_SKIP_TENDERLY', true);
 const dexKey = 'dexalot';
@@ -101,7 +101,7 @@ describe(`GenericRFQ ${dexKey} E2E`, () => {
     const smartTokens = SmartTokens[network];
     const config = generateConfig(network);
 
-    buildConfigForDexalotRFQ();
+    // buildConfigForDexalotRFQ();
     describe(`${Network[network]}`, () => {
       for (const testCase of testCases) {
         let srcToken: Token | SmartToken, destToken: Token | SmartToken;
